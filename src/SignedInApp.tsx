@@ -9,23 +9,31 @@ export default function SignedInApp() {
   const [user, setUser] = useState(null)
   const [useDemo, setUseDemo] = useState(false)
 
+  // 🟩 1. Initial setup
   useEffect(() => {
     setUseDemo(localStorage.getItem('demoMode') === '1')
 
+    let cancelled = false
+
     const init = async () => {
-      const { data, error } = await supabase.auth.getSession()
-      if (error) console.error('Error getting session:', error)
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) console.error('Error getting session:', error)
 
-      const session = data.session
-      setAuthed(!!session)
+        const session = data?.session
+        if (!cancelled) setAuthed(!!session)
 
-      if (session) {
-        const { data: userData } = await supabase.auth.getUser()
-        console.log('Current Supabase user:', userData?.user)
-        setUser(userData?.user ?? null)
+        if (session) {
+          const { data: userData } = await supabase.auth.getUser()
+          if (!cancelled) setUser(userData?.user ?? null)
+        } else {
+          if (!cancelled) setUser(null)
+        }
+      } catch (err) {
+        console.error('Init error:', err)
+      } finally {
+        if (!cancelled) setReady(true) // ✅ Always set ready
       }
-
-      setReady(true)
     }
 
     init()
@@ -36,7 +44,6 @@ export default function SignedInApp() {
         setAuthed(!!session)
         if (session) {
           const { data: userData } = await supabase.auth.getUser()
-          console.log('Auth change → user:', userData?.user)
           setUser(userData?.user ?? null)
         } else {
           setUser(null)
@@ -45,18 +52,38 @@ export default function SignedInApp() {
       }
     )
 
-    return () => sub.subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
-  if (!ready) return <div style={{ padding:16 }}>Loading…</div>
+  // 🟦 2. Conditional rendering
+  if (!ready)
+    return (
+      <div
+        style={{
+          padding: 16,
+          color: '#fff',
+          fontFamily: 'sans-serif',
+          textAlign: 'center',
+        }}
+      >
+        Loading your meal planner…
+      </div>
+    )
 
   if (useDemo) {
     return (
-      <div style={{ padding:16 }}>
-        <Header authed={false} useDemo onExitDemo={() => {
-          localStorage.removeItem('demoMode')
-          setUseDemo(false)
-        }} />
+      <div style={{ padding: 16 }}>
+        <Header
+          authed={false}
+          useDemo
+          onExitDemo={() => {
+            localStorage.removeItem('demoMode')
+            setUseDemo(false)
+          }}
+        />
         <MealPlannerApp user={null} demo />
       </div>
     )
@@ -64,12 +91,15 @@ export default function SignedInApp() {
 
   if (!authed || !user) {
     return (
-      <div style={{ padding:16 }}>
+      <div style={{ padding: 16 }}>
         <h1>Sign in to sync across devices</h1>
         <AuthPanel />
-        <div style={{ marginTop:12 }}>
+        <div style={{ marginTop: 12 }}>
           <button
-            onClick={() => { localStorage.setItem('demoMode','1'); setUseDemo(true) }}
+            onClick={() => {
+              localStorage.setItem('demoMode', '1')
+              setUseDemo(true)
+            }}
           >
             Try without an account (demo)
           </button>
@@ -78,41 +108,41 @@ export default function SignedInApp() {
     )
   }
 
-  // ✅ Logged-in view with header + sign-out
+  // 🟨 3. Authenticated view with sign-out
   return (
-    <div style={{ padding:16 }}>
-      <Header authed useDemo={false} onExitDemo={() => {}} />
+    <div style={{ padding: 16 }}>
+      <Header authed useDemo={false} onExitDemo={() => {}} user={user} />
       <MealPlannerApp user={user} demo={false} />
     </div>
   )
 }
 
-// Simple reusable header
 function Header({
   authed,
   useDemo,
   onExitDemo,
+  user,
 }: {
   authed: boolean
   useDemo: boolean
   onExitDemo: () => void
+  user?: any
 }) {
   return (
-    <div style={{
-      display: 'flex',
-      gap: 12,
-      alignItems: 'center',
-      marginBottom: 12
-    }}>
-      <div style={{ fontWeight: 700 }}>Meal Planner & Tracker</div>
-      <div style={{
-        marginLeft: 'auto',
+    <div
+      style={{
         display: 'flex',
-        gap: 8
-      }}>
-        {useDemo && (
-          <button onClick={onExitDemo}>Exit demo</button>
-        )}
+        gap: 12,
+        alignItems: 'center',
+        marginBottom: 12,
+        color: 'white',
+        fontFamily: 'sans-serif',
+      }}
+    >
+      <div style={{ fontWeight: 700 }}>Meal Planner & Tracker</div>
+      {user && <div>Welcome, {user.email}</div>}
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        {useDemo && <button onClick={onExitDemo}>Exit demo</button>}
         {authed && (
           <button
             onClick={() => supabase.auth.signOut()}
@@ -122,7 +152,7 @@ function Header({
               border: 'none',
               borderRadius: 6,
               padding: '6px 12px',
-              cursor: 'pointer'
+              cursor: 'pointer',
             }}
           >
             Sign out
