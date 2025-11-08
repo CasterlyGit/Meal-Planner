@@ -1,95 +1,75 @@
-import { useEffect, useState } from 'react'
-import { supabase } from './lib/supabase'
-import AuthPanel from './components/AuthPanel'
-import MealPlannerApp from './App'
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
+import AuthPanel from "./components/AuthPanel";
+import MealPlannerApp from "./App";
 
 export default function SignedInApp() {
-  const [ready, setReady] = useState(false)
-  const [authed, setAuthed] = useState(false)
-  const [user, setUser] = useState(null)
-  const [useDemo, setUseDemo] = useState(false)
+  const [ready, setReady] = useState(false);
+  const [authed, setAuthed] = useState(false);
+  const [user, setUser] = useState(null);
+  const [useDemo, setUseDemo] = useState(false);
 
-  // 🟩 1. Initial setup
   useEffect(() => {
-    setUseDemo(localStorage.getItem('demoMode') === '1')
+    setUseDemo(localStorage.getItem("demoMode") === "1");
 
-    let cancelled = false
-
-    const init = async () => {
+    // 🔴 Force everyone logged out on every page load
+    (async () => {
       try {
-        const { data, error } = await supabase.auth.getSession()
-        if (error) console.error('Error getting session:', error)
+        await supabase.auth.signOut();
+        console.log("Forced fresh logout on init ✅");
 
-        const session = data?.session
-        if (!cancelled) setAuthed(!!session)
+        // Proceed normally after logout
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session;
+        setAuthed(!!session);
 
         if (session) {
-          const { data: userData } = await supabase.auth.getUser()
-          if (!cancelled) setUser(userData?.user ?? null)
-        } else {
-          if (!cancelled) setUser(null)
+          const { data: userData } = await supabase.auth.getUser();
+          setUser(userData?.user ?? null);
         }
       } catch (err) {
-        console.error('Init error:', err)
+        console.error("Init error:", err);
       } finally {
-        if (!cancelled) setReady(true) // ✅ Always set ready
+        setReady(true);
       }
-    }
-
-    init()
+    })();
 
     const { data: sub } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log('Auth event:', _event)
-        setAuthed(!!session)
+        console.log("Auth event:", _event);
+        setAuthed(!!session);
         if (session) {
-          const { data: userData } = await supabase.auth.getUser()
-          setUser(userData?.user ?? null)
+          const { data: userData } = await supabase.auth.getUser();
+          setUser(userData?.user ?? null);
         } else {
-          setUser(null)
+          setUser(null);
         }
-        setReady(true)
+        setReady(true);
       }
-    )
+    );
 
-    return () => {
-      cancelled = true
-      sub.subscription.unsubscribe()
-    }
-  }, [])
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
-  // 🟦 2. Conditional rendering
   if (!ready)
     return (
-      <div
-        style={{
-          padding: 16,
-          color: '#fff',
-          fontFamily: 'sans-serif',
-          textAlign: 'center',
-        }}
-      >
-        Loading your meal planner…
+      <div style={{ padding: 16, color: "#fff", textAlign: "center" }}>
+        Loading…
       </div>
-    )
+    );
 
-  if (useDemo) {
+  if (useDemo)
     return (
       <div style={{ padding: 16 }}>
-        <Header
-          authed={false}
-          useDemo
-          onExitDemo={() => {
-            localStorage.removeItem('demoMode')
-            setUseDemo(false)
-          }}
-        />
+        <Header authed={false} useDemo onExitDemo={() => {
+          localStorage.removeItem("demoMode");
+          setUseDemo(false);
+        }} />
         <MealPlannerApp user={null} demo />
       </div>
-    )
-  }
+    );
 
-  if (!authed || !user) {
+  if (!authed || !user)
     return (
       <div style={{ padding: 16 }}>
         <h1>Sign in to sync across devices</h1>
@@ -97,62 +77,49 @@ export default function SignedInApp() {
         <div style={{ marginTop: 12 }}>
           <button
             onClick={() => {
-              localStorage.setItem('demoMode', '1')
-              setUseDemo(true)
+              localStorage.setItem("demoMode", "1");
+              setUseDemo(true);
             }}
           >
             Try without an account (demo)
           </button>
         </div>
       </div>
-    )
-  }
+    );
 
-  // 🟨 3. Authenticated view with sign-out
   return (
     <div style={{ padding: 16 }}>
       <Header authed useDemo={false} onExitDemo={() => {}} user={user} />
       <MealPlannerApp user={user} demo={false} />
     </div>
-  )
+  );
 }
 
-function Header({
-  authed,
-  useDemo,
-  onExitDemo,
-  user,
-}: {
-  authed: boolean
-  useDemo: boolean
-  onExitDemo: () => void
-  user?: any
-}) {
+function Header({ authed, useDemo, onExitDemo, user }) {
   return (
     <div
       style={{
-        display: 'flex',
+        display: "flex",
         gap: 12,
-        alignItems: 'center',
+        alignItems: "center",
         marginBottom: 12,
-        color: 'white',
-        fontFamily: 'sans-serif',
+        color: "white",
       }}
     >
       <div style={{ fontWeight: 700 }}>Meal Planner & Tracker</div>
       {user && <div>Welcome, {user.email}</div>}
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+      <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
         {useDemo && <button onClick={onExitDemo}>Exit demo</button>}
         {authed && (
           <button
             onClick={() => supabase.auth.signOut()}
             style={{
-              background: '#ef4444',
-              color: 'white',
-              border: 'none',
+              background: "#ef4444",
+              color: "white",
+              border: "none",
               borderRadius: 6,
-              padding: '6px 12px',
-              cursor: 'pointer',
+              padding: "6px 12px",
+              cursor: "pointer",
             }}
           >
             Sign out
@@ -160,5 +127,5 @@ function Header({
         )}
       </div>
     </div>
-  )
+  );
 }
