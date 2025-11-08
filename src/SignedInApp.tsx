@@ -17,16 +17,22 @@ export default function SignedInApp() {
       try {
         const { data } = await supabase.auth.getSession();
         const session = data?.session;
+        
+        console.log("Session check:", session ? "Found session" : "No session");
+        
         setAuthed(!!session);
 
         if (session) {
           const { data: userData } = await supabase.auth.getUser();
           setUser(userData?.user ?? null);
+          console.log("User loaded:", userData?.user?.email);
         }
+        
+        // ✅ Always set ready after initial check
+        setReady(true);
       } catch (err) {
         console.error("Init error:", err);
-      } finally {
-        setReady(true);
+        setReady(true); // Still set ready even on error
       }
     })();
 
@@ -40,7 +46,6 @@ export default function SignedInApp() {
         } else {
           setUser(null);
         }
-        setReady(true);
       }
     );
 
