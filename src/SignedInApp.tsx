@@ -12,13 +12,9 @@ export default function SignedInApp() {
   useEffect(() => {
     setUseDemo(localStorage.getItem("demoMode") === "1");
 
-    // 🔴 Force everyone logged out on every page load
+    // ✅ Check existing session (DON'T force logout)
     (async () => {
       try {
-        await supabase.auth.signOut();
-        console.log("Forced fresh logout on init ✅");
-
-        // Proceed normally after logout
         const { data } = await supabase.auth.getSession();
         const session = data?.session;
         setAuthed(!!session);
@@ -53,14 +49,14 @@ export default function SignedInApp() {
 
   if (!ready)
     return (
-      <div style={{ padding: 16, color: "#fff", textAlign: "center" }}>
-        Loading…
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        <div className="text-white text-xl">Loading...</div>
       </div>
     );
 
   if (useDemo)
     return (
-      <div style={{ padding: 16 }}>
+      <div>
         <Header authed={false} useDemo onExitDemo={() => {
           localStorage.removeItem("demoMode");
           setUseDemo(false);
@@ -71,24 +67,28 @@ export default function SignedInApp() {
 
   if (!authed || !user)
     return (
-      <div style={{ padding: 16 }}>
-        <h1>Sign in to sync across devices</h1>
-        <AuthPanel />
-        <div style={{ marginTop: 12 }}>
-          <button
-            onClick={() => {
-              localStorage.setItem("demoMode", "1");
-              setUseDemo(true);
-            }}
-          >
-            Try without an account (demo)
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+        <div className="bg-black bg-opacity-40 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 max-w-md w-full">
+          <h1 className="text-3xl font-bold text-white mb-2">Meal Planner & Tracker</h1>
+          <p className="text-gray-400 mb-6">Sign in to sync your data across all devices</p>
+          <AuthPanel />
+          <div className="mt-6 pt-6 border-t border-gray-700">
+            <button
+              onClick={() => {
+                localStorage.setItem("demoMode", "1");
+                setUseDemo(true);
+              }}
+              className="w-full bg-gray-700 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Try Demo Mode (No Account)
+            </button>
+          </div>
         </div>
       </div>
     );
 
   return (
-    <div style={{ padding: 16 }}>
+    <div>
       <Header authed useDemo={false} onExitDemo={() => {}} user={user} />
       <MealPlannerApp user={user} demo={false} />
     </div>
@@ -97,34 +97,33 @@ export default function SignedInApp() {
 
 function Header({ authed, useDemo, onExitDemo, user }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 12,
-        alignItems: "center",
-        marginBottom: 12,
-        color: "white",
-      }}
-    >
-      <div style={{ fontWeight: 700 }}>Meal Planner & Tracker</div>
-      {user && <div>Welcome, {user.email}</div>}
-      <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-        {useDemo && <button onClick={onExitDemo}>Exit demo</button>}
-        {authed && (
-          <button
-            onClick={() => supabase.auth.signOut()}
-            style={{
-              background: "#ef4444",
-              color: "white",
-              border: "none",
-              borderRadius: 6,
-              padding: "6px 12px",
-              cursor: "pointer",
-            }}
-          >
-            Sign out
-          </button>
-        )}
+    <div className="bg-black bg-opacity-40 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="text-xl font-bold text-white">Meal Planner & Tracker</div>
+          {user && <div className="text-sm text-gray-400">👋 {user.email}</div>}
+        </div>
+        <div className="flex items-center gap-3">
+          {useDemo && (
+            <button
+              onClick={onExitDemo}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+            >
+              Exit Demo
+            </button>
+          )}
+          {authed && (
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.reload();
+              }}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
+            >
+              Sign Out
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
