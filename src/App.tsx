@@ -23,6 +23,8 @@ import Card from './ui/Card'
 import EmptyState from './ui/EmptyState'
 import Skeleton from './ui/Skeleton'
 import useDebounce from './hooks/useDebounce'
+import InstallButton from './components/InstallButton'
+
 
 // -------------------- TYPES --------------------
 type Recipe = {
@@ -641,7 +643,7 @@ export default function MealPlannerApp({ user, demo = false }: Props) {
   )
 
   return (
-    <LayoutShell title="Meal Planner & Tracker">
+    <LayoutShell title="Meal Planner & Tracker" actions={<InstallButton variant="ghost" size="sm" />}>
       {/* NAV */}
       <div className="mb-3 border-b border-on-outline/30 pb-2">
         <TopTabs view={view} setView={setView} />
