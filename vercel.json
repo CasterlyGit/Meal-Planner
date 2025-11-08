@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/auth/v1/:path*",
-      "destination": "/api/supabase-auth/:path*"
+      "source": "/auth/v1/callback",
+      "destination": "/api/supabase-auth"
     }
   ]
 }
