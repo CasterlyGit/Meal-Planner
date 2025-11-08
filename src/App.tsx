@@ -520,7 +520,7 @@ export default function MealPlannerApp() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         {view === 'today' && (
-          <div className="h-[calc(100vh-200px)] overflow-hidden">
+          <div className="pb-6">
             {(() => {
               const today = new Date().toISOString().split('T')[0];
               const todayNutrition = getDailyNutrition(today);
@@ -529,9 +529,9 @@ export default function MealPlannerApp() {
               const carbsFatsPercent = Math.min(((todayNutrition.carbs / dailyGoals.carbs + todayNutrition.fats / dailyGoals.fats) / 2) * 100, 100);
 
               return (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Left: Apple Rings */}
-                  <div className="flex flex-col items-center justify-center">
+                  <div className="flex flex-col items-center justify-center min-h-[500px]">
                     <div className="mb-4 text-center">
                       <h2 className="text-3xl font-bold text-white mb-1">Today's Progress</h2>
                       <p className="text-gray-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
@@ -599,7 +599,7 @@ export default function MealPlannerApp() {
                   </div>
 
                   {/* Right: Today's Meals */}
-                  <div className="bg-black bg-opacity-30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 overflow-y-auto">
+                  <div className="bg-black bg-opacity-30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 max-h-[600px] overflow-y-auto">
                     <h3 className="text-xl font-bold text-white mb-4">Today's Meals</h3>
                     <div className="space-y-3">
                       {['breakfast', 'lunch', 'dinner', 'snack'].map(mealType => {
