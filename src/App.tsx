@@ -1,56 +1,226 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Trash2, ShoppingCart, Book, TrendingUp, Search, Star, X, Award, Flame, Target } from 'lucide-react';
+// App.tsx
+import React, { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
+import {
+  Calendar,
+  Plus,
+  Trash2,
+  ShoppingCart,
+  Book,
+  TrendingUp,
+  Search,
+  Star,
+  X,
+  Award,
+  Flame,
+  Target,
+} from 'lucide-react'
 
-export default function MealPlannerApp() {
-  const [view, setView] = useState('today');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [meals, setMeals] = useState({});
-  const [recipes, setRecipes] = useState([]);
-  const [showAddRecipe, setShowAddRecipe] = useState(false);
-  const [showAddMeal, setShowAddMeal] = useState(false);
-  const [selectedMealType, setSelectedMealType] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showGoalsModal, setShowGoalsModal] = useState(false);
+// 🔹 Accept user + demo from SignedInApp
+export default function MealPlannerApp({
+  user,
+  demo = false,
+}: {
+  user: any | null
+  demo?: boolean
+}) {
+  const [view, setView] = useState('today')
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  )
+  const [meals, setMeals] = useState<any>({})
+  const [recipes, setRecipes] = useState<any[]>([])
+  const [showAddRecipe, setShowAddRecipe] = useState(false)
+  const [showAddMeal, setShowAddMeal] = useState(false)
+  const [selectedMealType, setSelectedMealType] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showGoalsModal, setShowGoalsModal] = useState(false)
   const [dailyGoals, setDailyGoals] = useState({
     calories: 2000,
     protein: 150,
     carbs: 200,
-    fats: 65
-  });
+    fats: 65,
+  })
+
+  // 🔹 demo vs authed flag
+  const isDemo = !user || demo
+
+  // ---- DAILY GOALS (local only, same as before) ----
+  useEffect(() => {
+    const savedGoals = localStorage.getItem('dailyGoals')
+    if (savedGoals) setDailyGoals(JSON.parse(savedGoals))
+  }, [])
 
   useEffect(() => {
-    const savedGoals = localStorage.getItem('dailyGoals');
-    if (savedGoals) setDailyGoals(JSON.parse(savedGoals));
-  }, []);
+    localStorage.setItem('dailyGoals', JSON.stringify(dailyGoals))
+  }, [dailyGoals])
 
+  // ---- LOAD MEALS + RECIPES ----
   useEffect(() => {
-    localStorage.setItem('dailyGoals', JSON.stringify(dailyGoals));
-  }, [dailyGoals]);
+    // DEMO MODE: use localStorage (old behavior)
+    if (isDemo) {
+      const savedMeals = localStorage.getItem('mealPlans')
+      const savedRecipes = localStorage.getItem('recipes')
 
-  useEffect(() => {
-    const savedMeals = localStorage.getItem('mealPlans');
-    const savedRecipes = localStorage.getItem('recipes');
-    if (savedMeals) setMeals(JSON.parse(savedMeals));
-    if (savedRecipes) {
-      setRecipes(JSON.parse(savedRecipes));
-    } else {
-      const sampleRecipes = [
-        { id: 1, name: 'Greek Yogurt Bowl', ingredients: ['Greek yogurt', 'Berries', 'Granola', 'Honey'], prep: '5 min', calories: 320, protein: 18, carbs: 42, fats: 8, favorite: false },
-        { id: 2, name: 'Grilled Chicken Salad', ingredients: ['Chicken breast', 'Mixed greens', 'Cherry tomatoes', 'Olive oil'], prep: '15 min', calories: 380, protein: 35, carbs: 12, fats: 22, favorite: false },
-        { id: 3, name: 'Salmon with Vegetables', ingredients: ['Salmon fillet', 'Broccoli', 'Carrots', 'Lemon'], prep: '25 min', calories: 450, protein: 40, carbs: 18, fats: 24, favorite: false },
-      ];
-      setRecipes(sampleRecipes);
-      localStorage.setItem('recipes', JSON.stringify(sampleRecipes));
+      if (savedMeals) setMeals(JSON.parse(savedMeals))
+
+      if (savedRecipes) {
+        setRecipes(JSON.parse(savedRecipes))
+      } else {
+        const sampleRecipes = [
+          {
+            id: 1,
+            name: 'Greek Yogurt Bowl',
+            ingredients: ['Greek yogurt', 'Berries', 'Granola', 'Honey'],
+            prep: '5 min',
+            calories: 320,
+            protein: 18,
+            carbs: 42,
+            fats: 8,
+            favorite: false,
+          },
+          {
+            id: 2,
+            name: 'Grilled Chicken Salad',
+            ingredients: [
+              'Chicken breast',
+              'Mixed greens',
+              'Cherry tomatoes',
+              'Olive oil',
+            ],
+            prep: '15 min',
+            calories: 380,
+            protein: 35,
+            carbs: 12,
+            fats: 22,
+            favorite: false,
+          },
+          {
+            id: 3,
+            name: 'Salmon with Vegetables',
+            ingredients: ['Salmon fillet', 'Broccoli', 'Carrots', 'Lemon'],
+            prep: '25 min',
+            calories: 450,
+            protein: 40,
+            carbs: 18,
+            fats: 24,
+            favorite: false,
+          },
+        ]
+        setRecipes(sampleRecipes)
+        localStorage.setItem('recipes', JSON.stringify(sampleRecipes))
+      }
+
+      return
     }
-  }, []);
+
+    // AUTHED MODE: load from Supabase
+    if (!user) return
+
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('meal_plans')
+        .select('meals')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error loading meal plan:', error)
+        return
+      }
+
+      if (data?.meals) {
+        const payload: any = data.meals
+        if (payload.meals) setMeals(payload.meals)
+        if (payload.recipes) setRecipes(payload.recipes)
+      } else {
+        // First-time user: seed with sample recipes
+        const sampleRecipes = [
+          {
+            id: 1,
+            name: 'Greek Yogurt Bowl',
+            ingredients: ['Greek yogurt', 'Berries', 'Granola', 'Honey'],
+            prep: '5 min',
+            calories: 320,
+            protein: 18,
+            carbs: 42,
+            fats: 8,
+            favorite: false,
+          },
+          {
+            id: 2,
+            name: 'Grilled Chicken Salad',
+            ingredients: [
+              'Chicken breast',
+              'Mixed greens',
+              'Cherry tomatoes',
+              'Olive oil',
+            ],
+            prep: '15 min',
+            calories: 380,
+            protein: 35,
+            carbs: 12,
+            fats: 22,
+            favorite: false,
+          },
+          {
+            id: 3,
+            name: 'Salmon with Vegetables',
+            ingredients: ['Salmon fillet', 'Broccoli', 'Carrots', 'Lemon'],
+            prep: '25 min',
+            calories: 450,
+            protein: 40,
+            carbs: 18,
+            fats: 24,
+            favorite: false,
+          },
+        ]
+        setRecipes(sampleRecipes)
+      }
+    })()
+  }, [isDemo, user])
+
+  // ---- SAVE (DEMO → local) ----
+  useEffect(() => {
+    if (isDemo) {
+      localStorage.setItem('mealPlans', JSON.stringify(meals))
+    }
+  }, [isDemo, meals])
 
   useEffect(() => {
-    localStorage.setItem('mealPlans', JSON.stringify(meals));
-  }, [meals]);
+    if (isDemo) {
+      localStorage.setItem('recipes', JSON.stringify(recipes))
+    }
+  }, [isDemo, recipes])
 
+  // ---- SAVE (AUTHED → Supabase) ----
   useEffect(() => {
-    localStorage.setItem('recipes', JSON.stringify(recipes));
-  }, [recipes]);
+    if (isDemo || !user) return
+
+    const save = async () => {
+      const payload = { meals, recipes }
+
+      const { error } = await supabase
+        .from('meal_plans')
+        .upsert(
+          {
+            user_id: user.id,
+            title: 'Default',
+            meals: payload, // jsonb
+          },
+          { onConflict: 'user_id' }
+        )
+
+      if (error) {
+        console.error('Error saving meal plan:', error)
+      }
+    }
+
+    save()
+  }, [isDemo, user, meals, recipes])
+
+  // ⬇️ keep all your existing functions & JSX from here down (getWeekDates, addMealToPlan, etc.)
+
 
   const getWeekDates = () => {
     const curr = new Date(selectedDate);
