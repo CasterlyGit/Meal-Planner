@@ -8,3 +8,8 @@ if (!url || !key) {
 }
 
 export const supabase = createClient(url, key)
+
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Supabase AUTH →', event, session?.user?.email || 'nobody')
+  console.log('Full user object →', session?.user)
+})
